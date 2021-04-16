@@ -25,5 +25,5 @@ And of course I called strcmp from assembly. My strcmp compares string by 8 byte
 For that dictionary must be aligned on a 8-byte boundary (Just zero extend to 8 byte).  
 That's how it look like:  
 ![My strcmp](https://github.com/AntonIVT/Optimization/blob/main/images/strcmp_fast.png?raw=true)  
-As a result My hash table optimized on 57%:
+As a result My hash table optimized on 57%:  
 ![Third profiler attempt](https://github.com/AntonIVT/Optimization/blob/main/images/vtune_3.png?raw=true)
