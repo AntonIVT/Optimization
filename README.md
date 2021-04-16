@@ -15,7 +15,7 @@ And that's really works! Also get function has become faster too!:
 ![Second profiler attempt](https://github.com/AntonIVT/Optimization/blob/main/images/vtune_2.png?raw=true)  
 And here starts the hardest part of optimization. I've optimized get function. This is how it's looked before:  
 ![Get first view](https://github.com/AntonIVT/Optimization/blob/main/images/get_1.png?raw=true)  
-I've decided that I can rewrite all get function (with my own strcmp) on assembly.  
+I've decided that I can rewrite whole get function (with my own strcmp) on assembly.  
 Why? Check how it looked on assembly:  
 ![Get assembly slow](https://github.com/AntonIVT/Optimization/blob/main/images/get_dump.png?raw=true)  
 There's a looot of useless memory access moves.  
