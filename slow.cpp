@@ -1,5 +1,8 @@
-#include "include/hash_table_slow.hpp"
 #include <cstdio>
+
+#define SLOW
+#include "include/hash_table.hpp"
+#undef SLOW
 
 const int MAX_LINE = 100;
 
@@ -9,7 +12,7 @@ struct double_word
     const char* translated_word;
 };
 
-size_t get_file_size(FILE* file)
+size_t GetFileSize(FILE* file)
 {
     size_t size = 0;
     fseek(file, 0, SEEK_END);
@@ -19,7 +22,7 @@ size_t get_file_size(FILE* file)
     return size;
 }
 
-size_t get_eol_count(const char* buffer, size_t file_size)
+size_t GetEolCount(const char* buffer, size_t file_size)
 {
     size_t eol_count = 0;
 
@@ -34,7 +37,7 @@ size_t get_eol_count(const char* buffer, size_t file_size)
     return eol_count;
 }
 
-double_word* parser(char* buffer, size_t eol_count, size_t file_size)
+double_word* Parser(char* buffer, size_t eol_count, size_t file_size)
 {
     double_word* translates = (double_word *)calloc(eol_count, sizeof(double_word));
 
@@ -62,20 +65,21 @@ double_word* parser(char* buffer, size_t eol_count, size_t file_size)
     return translates;
 }
 
-bool main_test(HashTable *hash_table, double_word *translates, size_t eol_count)
+bool MainTest(HashTable *hash_table, double_word *translates, size_t eol_count)
 {
     for (size_t i = 0; i < eol_count; i++)
     {    
-        if (*(get(hash_table, translates[i].primary_word)) != translates[i].translated_word)
+        if (*(HashTable_get(hash_table, translates[i].primary_word)) != translates[i].translated_word)
         {
-            printf("PRIMARY:%s\nSHOULD:%s\nGIVE:%s\n", translates[i].primary_word, translates[i].translated_word, *(get(hash_table, translates[i].primary_word)));
+            printf("PRIMARY:%s\nSHOULD:%s\nGIVE:%s\n", translates[i].primary_word, translates[i].translated_word,
+                                                       *(HashTable_get(hash_table, translates[i].primary_word)));
             return false;
         }
     }
     return true;
 }
 
-bool translator_handler(HashTable *hash_table)
+bool DictionaryHandler(HashTable *hash_table)
 {
     char input[MAX_LINE + 1] = {0};
 
@@ -84,7 +88,7 @@ bool translator_handler(HashTable *hash_table)
 
     if (!strcmp(input, "EXIT")) return false;
 
-    const char** result = get(hash_table, input);
+    const char** result = HashTable_get(hash_table, input);
 
     if (result == NULL)
         printf("NULL ptr return\n");
@@ -94,7 +98,7 @@ bool translator_handler(HashTable *hash_table)
     return true;
 }
 
-void get_collisions(HashTable *hash_table)
+void PrintCollisions(HashTable *hash_table)
 {
     FILE *file = fopen("collisions.txt", "wb");
     for (int i = 0; i < hash_table->capacity; i++)
@@ -102,35 +106,34 @@ void get_collisions(HashTable *hash_table)
     fclose(file);
 }
 
-void speed_test(HashTable *hash_table, double_word *translates, size_t words_count)
+void SpeedTest(HashTable *hash_table, double_word *translates, size_t words_count)
 {
     for (int j = 0; j < 1000; j++)
     for (size_t i = 0; i < words_count; i++)
-            get(hash_table, translates[i].primary_word);
+            HashTable_get(hash_table, translates[i].primary_word);
 }
 
 int main()
 {
     FILE* file = fopen("src/new_dict.dic", "rb");
-    size_t file_size = get_file_size(file);
+    size_t file_size = GetFileSize(file);
 
     char *buffer = (char *)calloc(file_size + 1, sizeof(char));
     fread(buffer, sizeof(char), file_size, file);
     fclose(file);
     
-    size_t eol_count = get_eol_count(buffer, file_size);
-    double_word *translates = parser(buffer, eol_count, file_size);
+    size_t eol_count = GetEolCount(buffer, file_size);
+    double_word *translates = Parser(buffer, eol_count, file_size);
 
     HashTable hash_table;
-    construct(&hash_table, 100000);
-
+    HashTable_construct(&hash_table, 100000);
 
     for (int i = 0; i < eol_count; i++)
-        put(&hash_table, translates[i].primary_word, translates[i].translated_word);
+        HashTable_put(&hash_table, translates[i].primary_word, translates[i].translated_word);
 
-    speed_test(&hash_table, translates, eol_count);
+    SpeedTest(&hash_table, translates, eol_count);
 
     free(translates);
     free(buffer);
-    destruct(&hash_table);
+    HashTable_destruct(&hash_table);
 }

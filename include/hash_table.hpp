@@ -6,7 +6,29 @@
 typedef const char* KeyType;
 typedef const char* ValueType;
 
+//-----------------------------------------------------------------------------
+
+#ifdef SLOW
+
+unsigned long long hashing_function(const char* key)
+{   
+    unsigned long long hash = 5381;
+
+    while (*key)
+    {
+        hash = ((hash << 5) + hash) + *key;
+        key++;
+    }
+    return hash;
+}
+
+#else
+
 extern "C" unsigned long long hashing_function(const char*);
+
+#endif
+
+//-----------------------------------------------------------------------------
 
 typedef enum hash_error_en
 {
@@ -28,11 +50,27 @@ struct HashTable
     My_list<HashTableEl> *buckets;
 };
 
-hash_error add(HashTable *ths, KeyType key, ValueType value);
+//-----------------------------------------------------------------------------
 
-hash_error rehash(HashTable *ths, size_t new_capacity);
+hash_error HashTable_add(HashTable *ths, KeyType key, ValueType value);
 
-hash_error construct(HashTable *ths, size_t new_capacity)
+hash_error HashTable_rehash(HashTable *ths, size_t new_capacity);
+
+hash_error HashTable_construct(HashTable *ths, size_t new_capacity);
+
+hash_error HashTable_put(HashTable *ths, KeyType new_key, ValueType new_value);
+
+hash_error HashTable_destruct(HashTable *ths);
+
+#ifdef SLOW
+ValueType* HashTable_get(HashTable *ths, KeyType key);
+#else
+extern "C" ValueType* HashTable_get(HashTable* ths, KeyType key);
+#endif
+
+//=============================================================================
+
+hash_error HashTable_construct(HashTable *ths, size_t new_capacity)
 {
     ths->capacity = (new_capacity <= 0) ? 1 : new_capacity;
 
@@ -52,14 +90,16 @@ hash_error construct(HashTable *ths, size_t new_capacity)
     return HASH_OK;
 }
 
-hash_error rehash(HashTable *ths, size_t new_capacity)
+//-----------------------------------------------------------------------------
+
+hash_error HashTable_rehash(HashTable *ths, size_t new_capacity)
 {
     /* Without shrink to fit, only expand on */
     if (new_capacity < ths->capacity)
         return HASH_ERROR;
     
     HashTable new_hash_table = {};
-    construct(&new_hash_table, new_capacity);
+    HashTable_construct(&new_hash_table, new_capacity);
 
     for (int i = 0; i < ths->capacity; i++)
     {
@@ -70,7 +110,7 @@ hash_error rehash(HashTable *ths, size_t new_capacity)
         size_t curr_size = curr_bucket->get_size();
 
         for (size_t j = 0; j < curr_size; j++, curr_bucket->iter_increase(iter))
-            add(&new_hash_table, (*curr_bucket)[iter].key, (*curr_bucket)[iter].value);
+            HashTable_add(&new_hash_table, (*curr_bucket)[iter].key, (*curr_bucket)[iter].value);
 
         curr_bucket->destruct();
     }
@@ -83,7 +123,9 @@ hash_error rehash(HashTable *ths, size_t new_capacity)
     return HASH_OK;
 }
 
-hash_error add(HashTable *ths, KeyType key, ValueType value)
+//-----------------------------------------------------------------------------
+
+hash_error HashTable_add(HashTable *ths, KeyType key, ValueType value)
 {
     unsigned long long new_hash = hashing_function(key);
     
@@ -96,20 +138,45 @@ hash_error add(HashTable *ths, KeyType key, ValueType value)
     ths->size++;
     
     if (((double)ths->size / ths->capacity) > 0.9)
-        rehash(ths, ths->capacity * 2);
+        HashTable_rehash(ths, ths->capacity * 2);
     
     return HASH_OK;
 }
 
-extern "C" ValueType* get(HashTable* ths, KeyType key);
+//-----------------------------------------------------------------------------
 
-hash_error put(HashTable *ths, KeyType new_key, ValueType new_value)
+#ifdef SLOW
+
+ValueType* HashTable_get(HashTable *ths, KeyType key)
 {
-    const char ** value_ptr = get(ths, new_key);
+    unsigned long long new_hash = hashing_function(key);
+
+    My_list<HashTableEl> *curr_bucket = &(ths->buckets[new_hash % ths->capacity]);
+    size_t curr_size = curr_bucket->size;
+
+    list_iterator iter = {};
+    iter = curr_bucket->begin();
+
+    for (int i = 0; i < curr_size; i++, curr_bucket->iter_increase(iter))
+    {
+        if (!strcmp(key, (*curr_bucket)[iter].key))
+            return &((*curr_bucket)[iter].value);
+    }
+
+    return NULL;
+}
+
+#endif
+
+//-----------------------------------------------------------------------------
+
+hash_error HashTable_put(HashTable *ths, KeyType new_key, ValueType new_value)
+{
+    const char ** value_ptr = HashTable_get(ths, new_key);
 
     if (value_ptr == NULL)
     {
-        add(ths, new_key, new_value);
+        HashTable_add(ths, new_key, new_value);
         return HASH_OK;
     }
     else
@@ -119,7 +186,9 @@ hash_error put(HashTable *ths, KeyType new_key, ValueType new_value)
     }
 }
 
-hash_error destruct(HashTable *ths)
+//-----------------------------------------------------------------------------
+
+hash_error HashTable_destruct(HashTable *ths)
 {
     for (int i = 0; i < ths->capacity; i++)
         ths->buckets[i].destruct();

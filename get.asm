@@ -1,6 +1,6 @@
     default rel
     extern hashing_function
-    global get
+    global HashTable_get
  
 section .text
 
@@ -40,7 +40,7 @@ return_cmp:
 
 ; rdi = hash_table ptr
 ; rsi = const char* key
-get:
+HashTable_get:
     mov r8, rdi ; r8 = hash_table ptr
     mov r9, rsi ; r9 = char ptr
 
