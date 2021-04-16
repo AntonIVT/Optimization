@@ -1,8 +1,36 @@
-# Optimization
-This is optimization project. I've tried to optimize hash table with assembly.  
-Hash table was used as a dictionary. Dictionary had 160000 words and program add all these words to the hash table at the start.  
+# Improving Hash Table Performance
+
+### Abstract
+
+In this article I describe some methods for optimizing hash table written in C. 
+
+### Introduction
+ 
+I've optimized a hash table that can be used like a dictionary. By a word, we can get the translation of that word,
+the goal is to reduce this time. 
+
+### Analysis
+
+For testing speed I've used a function that gets each word in the dictionary (160,000 words) 1000 times.
+This is necessary so that the time spent on constructing the table and on other side functions is minimal.
+It is also important not to call the same words several times in a row because people rarely translate the same words several times.
+In this way we break the cache, but we get more realistic conditions. Here speed test code:  
+```
+void SpeedTest(HashTable *hash_table, DoubleWord *translates, size_t words_count)
+{
+    for (int j = 0; j < 1000; j++)
+    for (size_t i = 0; i < words_count; i++)
+            HashTable_get(hash_table, translates[i].primary_word);
+}
+```
+DoubleWord it's a structure that have only two fields: primary_word(const char*) and translated_word(const char*).
+And of course before speed test I tested hash table for correctness.
+
+### 
+
+Dictionary had 160000 words and program add all these words to the hash table at the start.  
 For this hash table I used separate chaining by my own structure List. For testing speed I launched 1000 times get-function of every word in dictionary:  
-![Speed text](https://github.com/AntonIVT/Optimization/blob/main/images/speed_test.png?raw=true)  
+![Speed test](https://github.com/AntonIVT/Optimization/blob/main/images/speed_test.png?raw=true)  
 First profiler attempt:  
 ![First profiler attempt](https://github.com/AntonIVT/Optimization/blob/main/images/vtune_1.png?raw=true)  
 As you can see a lot of time is spent on get function, hashing and strcmp function. So I tried to optimize them all.
