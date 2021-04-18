@@ -64,7 +64,7 @@ unsigned long long HashingFunction(const char* key)
 ```
 And you can see here profiler results for this version of the hash table:  
 ![First version profiler results](https://github.com/AntonIVT/Optimization/blob/main/images/VtunePureVersion.png)  
-The total running time of the program is **58.256s**. And as you can see the hashing function is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.
+The total running time of the program is **58.256s**. And as you can see the *hashing function* is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.
 But not all strings are divisible by 8. So let's change the data format for the input dictionary. Every string **must** be divisible by 8. Just add the required number of zeros in the end. Example: *"Hello\0\0\0"*. So next I've written a hash function with intrinsic. But I noticed that CRC32 was implemented in hardware when I looked at the disassembled function:
 ```Assembly
     ...
@@ -92,10 +92,44 @@ hashing_loop:
 ```
 And now we can check test with this optimization:
 ![Second version profiler results](https://github.com/AntonIVT/Optimization/blob/main/images/VtuneHashingVersion.png)
-As you can see, the hashing function is **18.9 times** faster. But also the ger function is **1.7 times** faster, because of the CRC32 hashes better and there are fewer collisions in the hash table.  
+As you can see, the *hashing function* is **18.9 times** faster. But also the *get* function is **1.7 times** faster, because of the CRC32 hashes better and there are fewer collisions in the hash table.  
 The total running time of the program is **33.292s**.
 
 ### String compare optimization
+
+As you can see in the previous benchmark, the "heaviest" functions are still *get* and *strcmp*. I've decided to improve *strcmp* (because *get* is quite simple and hard optimizing). I've written *mstrcmp* (my strcmp) in assembly:
+```Assembly
+mstrcmp:
+
+cmp_loop:
+
+    mov rax, [rsi]
+    mov rbx, [rdi]
+    
+    add rsi, 8
+    add rdi, 8
+
+    sub rax, rbx
+    cmp rax, 0
+    jne return_cmp
+
+    mov al, BYTE [rsi]
+    mov bl, BYTE [rdi]
+
+    cmp al, 0
+    jne rsi_not_zero
+    movzx rax, bl
+    ret
+
+rsi_not_zero:
+    cmp bl, 0
+    jne cmp_loop
+    movzx rax, al
+    ret
+
+return_cmp:
+    ret
+```
 
 ### Get function optimization
 
