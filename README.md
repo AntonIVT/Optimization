@@ -67,11 +67,13 @@ And you can see here profiler results for this version of the hash table:
 The total running time of the program is **58.256s**. And as you can see the hashing function is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.
 But not all strings are divisible by 8. So let's change the data format for the input dictionary. Every string **must** be divisible by 8. Just add the required number of zeros in the end. Example: *"Hello\0\0\0"*. So next I've written a hash function with intrinsic. But I noticed that CRC32 was implemented in hardware when I looked at the disassembled function:
 ```Assembly
+    ...
     mov    rax,QWORD PTR [rbp-0x10]
     mov    rdx,QWORD PTR [rbp-0x8]
     crc32  rax,rdx
     nop
     mov    QWORD PTR [rbp-0x18],rax
+    ...
 ```
 So why don't we use it directly? I've written assembly hashing function:
 ```Assembly
