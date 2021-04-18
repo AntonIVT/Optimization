@@ -9,7 +9,7 @@ const double LoadFactor = 0.65;
 
 //-----------------------------------------------------------------------------
 
-#ifdef SLOW_
+#ifdef SLOW
 
 unsigned long long HashingFunction(const char* key)
 {   
