@@ -27,7 +27,7 @@ size_t get_eol_count(const char* buffer)
 
 int main()
 {
-    FILE* file = fopen("src/dict.dic", "rb");
+    FILE* file = fopen("src/dict_old.dic", "rb");
     size_t file_size = get_file_size(file);
 
     char *buffer = (char *)calloc(file_size + 1, sizeof(char));
@@ -36,12 +36,12 @@ int main()
 
     char* new_buffer = (char *)calloc(file_size * 8 + 1, sizeof(char));
     size_t eol_count = get_eol_count(buffer);
-    
+
     char* buf_ptr = buffer;
     char* new_buf_ptr = new_buffer;
 
     char* eq = strchr(buf_ptr, '=');
-    file = fopen("src/new_dict.dic", "wb");
+    file = fopen("src/new_dict_.dic", "wb");
 
     for (int i = 0; i < eol_count; i++)
     {
@@ -67,8 +67,6 @@ int main()
 
         eq = strchr(buf_ptr, '=');
     }
-
-    printf("%i\n", new_buf_ptr - new_buffer);
 
     fwrite(new_buffer, sizeof(char), new_buf_ptr - new_buffer, file);
     

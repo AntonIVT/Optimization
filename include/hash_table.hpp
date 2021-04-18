@@ -1,16 +1,17 @@
 #include <cstdlib>
 #include "list.hpp"
 #include <cstring>
-#include <nmmintrin.h>
 
 typedef const char* KeyType;
 typedef const char* ValueType;
 
+const double LoadFactor = 0.65;
+
 //-----------------------------------------------------------------------------
 
-#ifdef SLOW
+#ifdef SLOW_
 
-unsigned long long hashing_function(const char* key)
+unsigned long long HashingFunction(const char* key)
 {   
     unsigned long long hash = 5381;
 
@@ -24,7 +25,7 @@ unsigned long long hashing_function(const char* key)
 
 #else
 
-extern "C" unsigned long long hashing_function(const char*);
+extern "C" unsigned long long HashingFunction(const char*);
 
 #endif
 
@@ -39,7 +40,7 @@ typedef enum hash_error_en
 
 struct HashTableEl
 {
-    KeyType key;
+    KeyType   key;
     ValueType value;
 };
 
@@ -83,7 +84,7 @@ hash_error HashTable_construct(HashTable *ths, size_t new_capacity)
     default_el.key   = NULL;
     default_el.value = NULL;
 
-    for (int i = 0; i < ths->capacity; i++)
+    for (size_t i = 0; i < ths->capacity; i++)
         ths->buckets[i].construct(1, default_el);
     
     ths->size = 0;
@@ -101,7 +102,7 @@ hash_error HashTable_rehash(HashTable *ths, size_t new_capacity)
     HashTable new_hash_table = {};
     HashTable_construct(&new_hash_table, new_capacity);
 
-    for (int i = 0; i < ths->capacity; i++)
+    for (size_t i = 0; i < ths->capacity; i++)
     {
         My_list<HashTableEl> *curr_bucket = &(ths->buckets[i]);
 
@@ -127,7 +128,7 @@ hash_error HashTable_rehash(HashTable *ths, size_t new_capacity)
 
 hash_error HashTable_add(HashTable *ths, KeyType key, ValueType value)
 {
-    unsigned long long new_hash = hashing_function(key);
+    unsigned long long new_hash = HashingFunction(key);
     
     HashTableEl new_el = {};
     new_el.key   = key;
@@ -137,7 +138,7 @@ hash_error HashTable_add(HashTable *ths, KeyType key, ValueType value)
 
     ths->size++;
     
-    if (((double)ths->size / ths->capacity) > 0.9)
+    if (((double)ths->size / ths->capacity) > LoadFactor)
         HashTable_rehash(ths, ths->capacity * 2);
     
     return HASH_OK;
@@ -149,7 +150,7 @@ hash_error HashTable_add(HashTable *ths, KeyType key, ValueType value)
 
 ValueType* HashTable_get(HashTable *ths, KeyType key)
 {
-    unsigned long long new_hash = hashing_function(key);
+    unsigned long long new_hash = HashingFunction(key);
 
     My_list<HashTableEl> *curr_bucket = &(ths->buckets[new_hash % ths->capacity]);
     size_t curr_size = curr_bucket->size;
@@ -157,7 +158,7 @@ ValueType* HashTable_get(HashTable *ths, KeyType key)
     list_iterator iter = {};
     iter = curr_bucket->begin();
 
-    for (int i = 0; i < curr_size; i++, curr_bucket->iter_increase(iter))
+    for (size_t i = 0; i < curr_size; i++, curr_bucket->iter_increase(iter))
     {
         if (!strcmp(key, (*curr_bucket)[iter].key))
             return &((*curr_bucket)[iter].value);
@@ -190,7 +191,7 @@ hash_error HashTable_put(HashTable *ths, KeyType new_key, ValueType new_value)
 
 hash_error HashTable_destruct(HashTable *ths)
 {
-    for (int i = 0; i < ths->capacity; i++)
+    for (size_t i = 0; i < ths->capacity; i++)
         ths->buckets[i].destruct();
     
     free(ths->buckets);

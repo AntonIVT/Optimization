@@ -1,18 +1,18 @@
     default rel
-    extern hashing_function
+    extern HashingFunction
     global HashTable_get
  
 section .text
 
-; DESTRUCT : RAX, RBX, RSI, RDI
+    ;DESTRUCT : RAX, RBX, RSI, RDI
 mstrcmp:
-    ;rsi = [string1]
-    ;rdi =[string2]
+    ;rsi = string1
+    ;rdi = string2
 
 cmp_loop:
 
-    mov rax, [rsi] ; rsi
-    mov rbx, [rdi] ; rdi
+    mov rax, [rsi]
+    mov rbx, [rdi]
     
     add rsi, 8
     add rdi, 8
@@ -41,11 +41,13 @@ return_cmp:
 ; rdi = hash_table ptr
 ; rsi = const char* key
 HashTable_get:
+    push rbx
+
     mov r8, rdi ; r8 = hash_table ptr
     mov r9, rsi ; r9 = char ptr
 
     mov rdi, r9
-    call hashing_function ; rax = hash
+    call HashingFunction ; rax = hash
 
     mov rcx, [r8] ; rcx = capacity
     xor rdx, rdx
@@ -89,8 +91,10 @@ return_ptr:
     add rax, rbx
     add rax, 0x8
     
+    pop rbx
     ret
 
 return_null:
     xor rax, rax
+    pop rbx
     ret

@@ -1,10 +1,10 @@
     default rel
-    global hashing_function
+    global HashingFunction
  
 section .text
 
 ; rdi = string
-hashing_function:
+HashingFunction:
     xor rax, rax
 
 hashing_loop:
