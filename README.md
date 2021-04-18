@@ -130,8 +130,89 @@ rsi_not_zero:
 return_cmp:
     ret
 ```
+But *__strcmp_avx2* uses avx instructions and it's also inlining. So while *mstrcmp* is a little faster than the standard, *get* function becomes much slower. 
+And I've had to rewrite *get* in assembly.
 
 ### Get function optimization
 
+This is how *get* function looked before:
+```C++
+ValueType* HashTable_get(HashTable *ths, KeyType key)
+{
+    unsigned long long new_hash = HashingFunction(key);
 
-## Result
+    My_list<HashTableEl> *curr_bucket = &(ths->buckets[new_hash % ths->capacity]);
+    size_t curr_size = curr_bucket->size;
+
+    list_iterator iter = {};
+    iter = curr_bucket->begin();
+
+    for (size_t i = 0; i < curr_size; i++, curr_bucket->iter_increase(iter))
+    {
+        if (!strcmp(key, (*curr_bucket)[iter].key))
+            return &((*curr_bucket)[iter].value);
+    }
+
+    return NULL;
+}
+```
+This is very slow function because of cycle and iteration on list. And this is how this function has looked disassembled:
+```Assembly
+...
+    mov    QWORD PTR [rbp-0x8],rax
+    xor    eax,eax
+    mov    rax,QWORD PTR [rbp-0x40]
+    mov    rdi,rax
+    call   1229 <_Z16hashing_functionPKc>
+    mov    QWORD PTR [rbp-0x20],rax
+    mov    rax,QWORD PTR [rbp-0x38]
+    mov    rsi,QWORD PTR [rax+0x10]
+    mov    rax,QWORD PTR [rbp-0x38]
+    mov    rcx,QWORD PTR [rax]
+    mov    rax,QWORD PTR [rbp-0x20]
+    mov    edx,0x0
+    div    rcx
+    mov    rax,rdx
+    shl    rax,0x6
+    add    rax,rsi
+    mov    QWORD PTR [rbp-0x18],rax
+...
+```
+As you can see there's a lot of memory access (to get structures fields). And also I decided to break an abstraction. To reduce the running time, I access memory directly (to get a sheet item). That is, I am not using iterators. And having figured out the structures, I rewrote this function in assembly (There's a lot of important things in C calling conventions and about it you can read [here](https://en.wikipedia.org/wiki/X86_calling_conventions#System_V_AMD64_ABI)). And this is how it looks now:
+```Assembly
+HashTable_get:
+    push rbx
+
+    mov r8, rdi ; r8 = hash_table ptr
+    mov r9, rsi ; r9 = char ptr
+
+    mov rdi, r9
+    call HashingFunction ; rax = hash
+
+    mov rcx, [r8]        ; rcx = capacity
+    xor rdx, rdx
+
+    div rcx 
+    mov rax, rdx
+    shl rax, 0x6
+    add rax, QWORD [r8 + 0x10] ; rax = curr bucket
+    
+    mov r10, rax               ; r10 = curr bucket
+    mov r11, [r10 + 0x18]      ; r11 = curr size
+    
+    xor rcx, rcx               ; rcx = counter
+...
+```
+And...final banchmark:
+![Third version profiler results](https://github.com/AntonIVT/Optimization/blob/main/images/VtuneFastVersion.png)  
+And that it! *get loop* it's a label in *get* function. And final version result: **25.574s**.
+
+## Results
+
+So final optimization is **2.27** times on -O0. And with -O2 (The best stable optimization in C compilers) pure version works for **38.084s** and optimized function works for **24.052s**. And that's OK because in my optimized version almost all the most "haviest" function are written in assemly.
+
+### Research task
+
+In fact, the best way it's to write a hash table with open addressing. 
+And if you interested in optimization and low-level programming you can try to do a comparison of hash table with open addressing and hash table with separate chaining. And of course both of them should be optimized :)
+
