@@ -10,8 +10,6 @@ I've optimized a hash table that can be used like a dictionary. By a word, we ca
 the goal is to reduce this time. I've used both algorithmic and low-level optimization methods. 
 I used hashing with separate chaining and for "chains" I used my own structure List. 
 
-# ADD DICTIONARY INPUT.
-
 ### Analysis
 
 **Machine: 4xIntel® Core™ i5-6200U Processor**  
