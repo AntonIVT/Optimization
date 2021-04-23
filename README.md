@@ -39,7 +39,7 @@ And of course before speed test I tested hash table for correctness.
 In a hash table with separate chaining the load factor is the maximum ratio of the numbers of elements in the table to the number of bucket (Bucket it's one chain). Of course it should be less than 1 and in general the lower this number, the less collisions, and hence the faster work time (A collision is an equality of data keys, that is, two or more objects are in the same bucket).
 Below is a **plot of the dependence of the hash table operation time depending on the size/capacity**:  
 ![Plot](https://github.com/AntonIVT/Optimization/blob/main/images/main_plot.jpg)  
-<p align="center"> <i> Figure 1 </i> </p>  
+<p align="left"> <i> Figure 1 </i> </p>  
 The plot shows that the load factor affects the speed of work. But the less the load factor, the more memory you have to spend on empty buckets.
 It is necessary to choose the optimal value for memory and speed. So I decided that a load factor of **0.7** is ideal for my hash table.  
 Load factor selection it is an algorithmic optimization. You don't need to think about how the hash table works.  
@@ -149,7 +149,8 @@ unsigned long long HashingFunction(const char* key)
 And as you can see on the previous test *hashing function* is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.There also exists intrinsic **_mm_crc32_u8** that accumulates a CRC32 with only 8-bit integers, but with that hashing function total time is greater than was before: **52.128s**:
 ![Vtune3](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune3.png)
 <p align="center"> <i> Figure 4 </i> </p>  
-Not surprisingly, both functions are good enough to hash strings:
+Not surprisingly, both functions are good enough to hash strings:  
+
 Default hashing                                                                 | CRC32
 :------------------------------------------------------------------------------:|:-------------------------:
 ![](https://github.com/AntonIVT/Optimization/blob/main/images/default_col.jpg)  |  ![](https://github.com/AntonIVT/Optimization/blob/main/images/crc32_col.jpg)  
