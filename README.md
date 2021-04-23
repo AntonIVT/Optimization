@@ -161,17 +161,19 @@ Default hashing                                                                 
 :------------------------------------------------------------------------------:|:-------------------------:
 ![](https://github.com/AntonIVT/Optimization/blob/main/images/default_col.jpg)  |  ![](https://github.com/AntonIVT/Optimization/blob/main/images/crc32_col.jpg)  
 
+<p align="center"> <i> Figure 5 </i> </p>  
+
 And for speed I decided to used _mm_crc32_u64.  
 But not all strings are divisible by 8. So let's change the data format for the input dictionary. Every string **must** be divisible by 8. Just add the required number of zeros in the end. Example: *"Hello\0\0\0"*. So next I've written a hash function with intrinsic. And profiler result you can see here:
 
 ![Vtune4](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune4.png)  
-<p align="center"> <i> Figure 5 </i> </p>  
+<p align="center"> <i> Figure 6 </i> </p>  
 
 The total time is **30.248s**.
 
 ### String compare optimization
 
-As you can see on the *Figure 5*, the "heaviest" functions are *get* and *strcmp*. I've written *mstrcmp* (my strcmp) in assembly:
+As you can see on the *Figure 6*, the "heaviest" functions are *get* and *strcmp*. I've written *mstrcmp* (my strcmp) in assembly:
 ```Assembly
 mstrcmp:
 
@@ -207,7 +209,7 @@ return_cmp:
 And as you can see I compare string by 8 bytes, because on previous step I've changed dictionary format. So that's why it's a little fast than standart *strcmp*:
 
 ![Vtune5](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune5.png)
-<p align="center"> <i> Figure 6 </i> </p>  
+<p align="center"> <i> Figure 7 </i> </p>  
 
 And total time with *mstrcm* is **29.694s**.
 
@@ -241,7 +243,7 @@ hashing_loop:
 And now we can check test with this optimization:
 
 ![Vtune6](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune6.png)
-<p align="center"> <i> Figure 7 </i> </p>  
+<p align="center"> <i> Figure 8 </i> </p>  
 
 The total running time of the program is **23.993s**.
 
@@ -272,7 +274,7 @@ Also I can use these functions in get function by inlining because they are very
 And here benchmark of the final version:
 
 ![Vtune7](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune7.png)
-<p align="center"> <i> Figure 8 </i> </p>  
+<p align="center"> <i> Figure 9 </i> </p>  
 
 That's very fast and total time is **19.737s**
 
