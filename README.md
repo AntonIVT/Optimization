@@ -37,14 +37,18 @@ And of course before speed test I tested hash table for correctness.
 ### Load factor optimization
 
 In a hash table with separate chaining the load factor is the maximum ratio of the numbers of elements in the table to the number of bucket (Bucket it's one chain). Of course it should be less than 1 and in general the lower this number, the less collisions, and hence the faster work time (A collision is an equality of data keys, that is, two or more objects are in the same bucket).
-Below is a **plot of the dependence of the hash table operation time depending on the load factor**:  
-![Load factor](https://github.com/AntonIVT/Optimization/blob/main/images/plot_load_factor.jpg)  
+Below is a **plot of the dependence of the hash table operation time depending on the size/capacity**:  
+![Plot](https://github.com/AntonIVT/Optimization/blob/main/images/main_plot.jpg)  
 The plot shows that the load factor affects the speed of work. But the less the load factor, the more memory you have to spend on empty buckets.
 It is necessary to choose the optimal value for memory and speed. So I decided that a load factor of **0.7** is ideal for my hash table.  
-Load factor selection it is an algorithmic optimization. You don't need to think about how the hash table works.
+Load factor selection it is an algorithmic optimization. You don't need to think about how the hash table works.  
+
+First benchmark with total time **54.160s**:
+![Vtune1](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune1.jpg)
 
 ### Get function optimization
 
+As you can see on the previous benchmark the most significant function is *get*.
 This is how *get* function looked before:
 ```C++
 ValueType* HashTable_get(HashTable *ths, KeyType key)
@@ -97,7 +101,11 @@ HashTable_get:
     mov r9, rsi ; r9 = char ptr
 
     mov rdi, r9
+    push r9
+    push r8
     call HashingFunction ; rax = hash
+    pop r8
+    pop r9
 
     mov rcx, [r8]        ; rcx = capacity
     xor rdx, rdx
@@ -113,7 +121,10 @@ HashTable_get:
     xor rcx, rcx               ; rcx = counter
 ...
 ```
-# RESULTS
+
+And here you can see here profiler results for this version of the hash table with upgraded function *get*: 
+![Vtune2](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune2.jpg)
+And total time is **50.042s**
 
 ### Hashing function optimization
 
@@ -132,42 +143,18 @@ unsigned long long HashingFunction(const char* key)
     return hash;
 }
 ```
-And you can see here profiler results for this version of the hash table:  
-![First version profiler results](https://github.com/AntonIVT/Optimization/blob/main/images/VtunePureVersion.png)  
-The total running time of the program is **58.256s**. And as you can see the *hashing function* is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.
-But not all strings are divisible by 8. So let's change the data format for the input dictionary. Every string **must** be divisible by 8. Just add the required number of zeros in the end. Example: *"Hello\0\0\0"*. So next I've written a hash function with intrinsic. But I noticed that CRC32 was implemented in hardware when I looked at the disassembled function:
-```Assembly
-    ...
-    mov    rax,QWORD PTR [rbp-0x10]
-    mov    rdx,QWORD PTR [rbp-0x8]
-    crc32  rax,rdx
-    nop
-    mov    QWORD PTR [rbp-0x18],rax
-    ...
-```
-So why don't we use it directly? I've written assembly hashing function:
-```Assembly
-HashingFunction:
-    xor rax, rax
-
-hashing_loop:
-
-    crc32 rax, QWORD [rdi]
-
-    add rdi, 8
-    cmp BYTE [rdi], 0
-    jne hashing_loop
-    
-    ret
-```
-And now we can check test with this optimization:
-![Second version profiler results](https://github.com/AntonIVT/Optimization/blob/main/images/VtuneHashingVersion.png)
-As you can see, the *hashing function* is **18.9 times** faster. But also the *get* function is **1.7 times** faster, because of the CRC32 hashes better and there are fewer collisions in the hash table.  
-The total running time of the program is **33.292s**.
+And as you can see on the previous test *hashing function* is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.There also exists intrinsic _mm_crc32_u8 that accumulates a CRC32 with only 8-bit integers, but with that hashing function total time is greater than was befor: 52.128s. Not surprisingly, both functions are good enough to hash strings:
+Default hashing             | CRC32
+:-------------------------:|:-------------------------:
+![](https://github.com/AntonIVT/Optimization/blob/main/images/default_col.jpg)  |  ![](https://github.com/AntonIVT/Optimization/blob/main/images/crc32_col.jpg)
+And for speed I decided to used _mm_crc32_u64.  
+But not all strings are divisible by 8. So let's change the data format for the input dictionary. Every string **must** be divisible by 8. Just add the required number of zeros in the end. Example: *"Hello\0\0\0"*. So next I've written a hash function with intrinsic. And profiler result you can see here:
+![Vtune4](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune4.jpg)  
+The total time is **30.248s**.
 
 ### String compare optimization
 
-As you can see in the previous benchmark, the "heaviest" functions are still *get* and *strcmp*. I've decided to improve *strcmp* (because *get* is quite simple and hard optimizing). I've written *mstrcmp* (my strcmp) in assembly:
+As you can see in the previous benchmark, the "heaviest" functions are still *get* and *strcmp*. I've written *mstrcmp* (my strcmp) in assembly:
 ```Assembly
 mstrcmp:
 
@@ -200,16 +187,50 @@ rsi_not_zero:
 return_cmp:
     ret
 ```
-But *__strcmp_avx2* uses avx instructions and it's also inlining. So while *mstrcmp* is a little faster than the standard, *get* function becomes much slower. 
-And I've had to rewrite *get* in assembly.
+And as you can see I compare string by 8 bytes, because on previous step I've changed fictionary format. So that's why it's a little fast than standart *strcmp*:
+![Vtune5](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune5.jpg)
+
+### CRC32 optimization
+
+I noticed that CRC32 was implemented in hardware when I looked at the disassembled function:
+```Assembly
+    ...
+    mov    rax,QWORD PTR [rbp-0x10]
+    mov    rdx,QWORD PTR [rbp-0x8]
+    crc32  rax,rdx
+    nop
+    mov    QWORD PTR [rbp-0x18],rax
+    ...
+```
+So why don't we use it directly? I've written assembly hashing function:
+```Assembly
+HashingFunction:
+    xor rax, rax
+
+hashing_loop:
+
+    crc32 rax, QWORD [rdi]
+
+    add rdi, 8
+    cmp BYTE [rdi], 0
+    jne hashing_loop
+    
+    ret
+```
+And now we can check test with this optimization:
+![Vtune6](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune6.png)
+The total running time of the program is **23.993s**.
 
 ### Final optimization
 
-# ALIGNMENT
+I used aliged dictionary for 32 bits!!!
+Results:
+![Vtune7](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune7.png)
+Time : **19.737s**
 
 ## Results
 
-So final optimization is **2.27** times on -O0. And with -O2 (The best stable optimization in C compilers) pure version works for **38.084s** and optimized function works for **24.052s**. And that's OK because in my optimized version almost all the most "haviest" function are written in assemly.
+So final optimization is **2.74** times on -O0. And with -O2 (The best stable optimization in C compilers) pure version works for **36.317s** and optimized function works for **18.814s**. And that's OK because in my optimized version almost all the most "haviest" function are written in assemly.
 
 ### Research task
 
