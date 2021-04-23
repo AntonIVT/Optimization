@@ -238,9 +238,20 @@ And I did it like before: I changed hash table keys with zero extand to 32 bits.
     cmp eax, -1
     ...
 ```
-Results:
+And for hashing i just do four crc32 hashing:
+```Assembly
+    ...
+    xor rax, rax
+    crc32 rax, QWORD [r9]
+    crc32 rax, QWORD [r9 + 8]
+    crc32 rax, QWORD [r9 + 16]
+    crc32 rax, QWORD [r9 + 24]
+    ...
+```
+Also I can use these functions in get function by inlining because they are very small. And there will be less time spent on calling the function.
+And here benchmark of the final version:
 ![Vtune7](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune7.png)
-Time : **19.737s**
+That's very fast and total time is **19.737s**
 
 ## Results
 
