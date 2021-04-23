@@ -50,7 +50,7 @@ First benchmark with total time **54.160s**:
 
 ### Get function optimization
 
-As you can see on the previous benchmark the most significant function is *get*.
+As you can see on the *Figure 2* the most significant function is *get*.
 This is how *get* function looked before:
 ```C++
 ValueType* HashTable_get(HashTable *ths, KeyType key)
@@ -127,7 +127,7 @@ HashTable_get:
 And here you can see here profiler results for this version of the hash table with upgraded function *get*: 
 ![Vtune2](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune2.png)
 <p align="center"> <i> Figure 3 </i> </p>  
-And total time is **50.042s**. As you can see hashing function is very slow and so, in the next step, I improved it.
+And total time is **50.042s**. As you can see on *Figure 3* hashing function is very slow and in the next step I improved it.
 
 ### Hashing function optimization
 
@@ -163,7 +163,7 @@ The total time is **30.248s**.
 
 ### String compare optimization
 
-As you can see in the previous benchmark, the "heaviest" functions are *get* and *strcmp*. I've written *mstrcmp* (my strcmp) in assembly:
+As you can see on the *Figure 5*, the "heaviest" functions are *get* and *strcmp*. I've written *mstrcmp* (my strcmp) in assembly:
 ```Assembly
 mstrcmp:
 
