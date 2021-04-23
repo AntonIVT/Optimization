@@ -203,7 +203,7 @@ rsi_not_zero:
 return_cmp:
     ret
 ```
-And as you can see I compare string by 8 bytes, because on previous step I've changed dictionary format. So that's why it's a little fast than standart *strcmp*:
+And as you can see I compare string by 8 bytes, because on previous step I've changed dictionary format. So that's why it's a little faster than standart *strcmp*:
 
 ![Vtune5](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune5.png)
 <p align="center"> <i> Figure 7 </i> </p>  
