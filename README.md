@@ -124,7 +124,7 @@ HashTable_get:
 
 And here you can see here profiler results for this version of the hash table with upgraded function *get*: 
 ![Vtune2](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune2.png)
-And total time is **50.042s**
+And total time is **50.042s**. As you can see hashing function is very slow and so, in the next step, I improved it.
 
 ### Hashing function optimization
 
@@ -143,7 +143,9 @@ unsigned long long HashingFunction(const char* key)
     return hash;
 }
 ```
-And as you can see on the previous test *hashing function* is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.There also exists intrinsic _mm_crc32_u8 that accumulates a CRC32 with only 8-bit integers, but with that hashing function total time is greater than was befor: 52.128s. Not surprisingly, both functions are good enough to hash strings:
+And as you can see on the previous test *hashing function* is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.There also exists intrinsic **_mm_crc32_u8** that accumulates a CRC32 with only 8-bit integers, but with that hashing function total time is greater than was before: **52.128s**:
+![Vtune3](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune3.png)
+Not surprisingly, both functions are good enough to hash strings:
 Default hashing                                                                 | CRC32
 :------------------------------------------------------------------------------:|:-------------------------:
 ![](https://github.com/AntonIVT/Optimization/blob/main/images/default_col.jpg)  |  ![](https://github.com/AntonIVT/Optimization/blob/main/images/crc32_col.jpg)  
@@ -155,7 +157,7 @@ The total time is **30.248s**.
 
 ### String compare optimization
 
-As you can see in the previous benchmark, the "heaviest" functions are still *get* and *strcmp*. I've written *mstrcmp* (my strcmp) in assembly:
+As you can see in the previous benchmark, the "heaviest" functions are *get* and *strcmp*. I've written *mstrcmp* (my strcmp) in assembly:
 ```Assembly
 mstrcmp:
 
@@ -188,12 +190,13 @@ rsi_not_zero:
 return_cmp:
     ret
 ```
-And as you can see I compare string by 8 bytes, because on previous step I've changed fictionary format. So that's why it's a little fast than standart *strcmp*:
+And as you can see I compare string by 8 bytes, because on previous step I've changed dictionary format. So that's why it's a little fast than standart *strcmp*:
 ![Vtune5](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune5.png)
+And total time with *mstrcm* is **29.694s**.
 
 ### CRC32 optimization
 
-I noticed that CRC32 was implemented in hardware when I looked at the disassembled function:
+In the disassembler I noticed that CRC32 was implemented in hardware when I looked at the disassembled function:
 ```Assembly
     ...
     mov    rax,QWORD PTR [rbp-0x10]
@@ -224,7 +227,17 @@ The total running time of the program is **23.993s**.
 
 ### Final optimization
 
-I used aliged dictionary for 32 bits!!!
+I realized that you can very quickly compare strings and calculate the hash if you make the key length the same for all words.
+And I did it like before: I changed hash table keys with zero extand to 32 bits. For string compare I just compared bytes with 256-bit YMM registers:
+```Assembly
+    ...
+    vlddqu ymm0, [rsi]
+    vlddqu ymm1, [rdi]
+    vpcmpeqq ymm0, ymm0, ymm1
+    vpmovmskb eax, ymm0
+    cmp eax, -1
+    ...
+```
 Results:
 ![Vtune7](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune7.png)
 Time : **19.737s**
