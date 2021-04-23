@@ -38,13 +38,15 @@ And of course before speed test I tested hash table for correctness.
 
 In a hash table with separate chaining the load factor is the maximum ratio of the numbers of elements in the table to the number of bucket (Bucket it's one chain). Of course it should be less than 1 and in general the lower this number, the less collisions, and hence the faster work time (A collision is an equality of data keys, that is, two or more objects are in the same bucket).
 Below is a **plot of the dependence of the hash table operation time depending on the size/capacity**:  
+
 ![Plot](https://github.com/AntonIVT/Optimization/blob/main/images/main_plot.jpg)  
 <p align="left"> <i> Figure 1 </i> </p>  
+
 The plot shows that the load factor affects the speed of work. But the less the load factor, the more memory you have to spend on empty buckets.
 It is necessary to choose the optimal value for memory and speed. So I decided that a load factor of **0.7** is ideal for my hash table.  
 Load factor selection it is an algorithmic optimization. You don't need to think about how the hash table works.  
-
 First benchmark with total time **54.160s**:
+
 ![Vtune1](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune1.png)  
 <p align="center"> <i> Figure 2 </i> </p>   
 
@@ -125,8 +127,10 @@ HashTable_get:
 ```
 
 And here you can see here profiler results for this version of the hash table with upgraded function *get*: 
+
 ![Vtune2](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune2.png)
 <p align="center"> <i> Figure 3 </i> </p>  
+
 And total time is **50.042s**. As you can see on *Figure 3* hashing function is very slow and in the next step I improved it.
 
 ### Hashing function optimization
@@ -147,8 +151,10 @@ unsigned long long HashingFunction(const char* key)
 }
 ```
 And as you can see on the previous test *hashing function* is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.There also exists intrinsic **_mm_crc32_u8** that accumulates a CRC32 with only 8-bit integers, but with that hashing function total time is greater than was before: **52.128s**:
+
 ![Vtune3](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune3.png)
 <p align="center"> <i> Figure 4 </i> </p>  
+
 Not surprisingly, both functions are good enough to hash strings:  
 
 Default hashing                                                                 | CRC32
@@ -157,8 +163,10 @@ Default hashing                                                                 
 
 And for speed I decided to used _mm_crc32_u64.  
 But not all strings are divisible by 8. So let's change the data format for the input dictionary. Every string **must** be divisible by 8. Just add the required number of zeros in the end. Example: *"Hello\0\0\0"*. So next I've written a hash function with intrinsic. And profiler result you can see here:
+
 ![Vtune4](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune4.png)  
 <p align="center"> <i> Figure 5 </i> </p>  
+
 The total time is **30.248s**.
 
 ### String compare optimization
@@ -197,8 +205,10 @@ return_cmp:
     ret
 ```
 And as you can see I compare string by 8 bytes, because on previous step I've changed dictionary format. So that's why it's a little fast than standart *strcmp*:
+
 ![Vtune5](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune5.png)
 <p align="center"> <i> Figure 6 </i> </p>  
+
 And total time with *mstrcm* is **29.694s**.
 
 ### CRC32 optimization
@@ -229,8 +239,10 @@ hashing_loop:
     ret
 ```
 And now we can check test with this optimization:
+
 ![Vtune6](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune6.png)
 <p align="center"> <i> Figure 7 </i> </p>  
+
 The total running time of the program is **23.993s**.
 
 ### Final optimization
@@ -258,8 +270,10 @@ And for hashing i just do four crc32 hashing:
 ```
 Also I can use these functions in get function by inlining because they are very small. And there will be less time spent on calling the function.
 And here benchmark of the final version:
+
 ![Vtune7](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune7.png)
 <p align="center"> <i> Figure 8 </i> </p>  
+
 That's very fast and total time is **19.737s**
 
 ## Results
