@@ -6,9 +6,9 @@ In this article I describe some methods for optimizing hash table written in C.
 
 ## Introduction
  
-I've optimized a hash table that can be used like a dictionary. By a word, we can get the translation of that word,
-the goal is to reduce this time. I've used both algorithmic and low-level optimization methods. 
-I used hashing with separate chaining and for "chains" I used my own structure List. 
+I worked with a hash table that can be used like a dictionary. By a word, we can get the translation of that word,
+the goal is to reduce this time. In this work I used both algorithmic and low-level optimization methods. 
+Also I worked with hash table with separate chaining and for "chains" I used my own structure List. 
 
 ### Analysis
 
@@ -16,7 +16,7 @@ I used hashing with separate chaining and for "chains" I used my own structure L
 **Profiler: Intel® VTune™**  
 **Disassembler: objdump**
 
-For testing speed I've used a function that gets each word in the dictionary (160,000 words) 1000 times.
+For testing speed I used a function that gets each word in the dictionary (160,000 words) 1000 times.
 When starting the test, only the profiler was launched (IDE is also disabled) to **minimize the influence of other programs on the processor**.
 This is necessary so that the time spent on constructing the table and on other side functions is minimal.
 It is also important not to call the same words several times in a row because people rarely translate the same words several times.
@@ -96,7 +96,7 @@ This is very slow function because of cycle and iteration on list. And this is h
     mov    QWORD PTR [rbp-0x18],rax
 ...
 ```
-As you can see there's a lot of memory access (to get structures fields). And also I decided to break an abstraction. To reduce the running time, I access memory directly (to get a sheet item). That is, I am not using iterators. And having figured out the structures, I rewrote this function in assembly (There's a lot of important things in C calling conventions and about it you can read [here](https://en.wikipedia.org/wiki/X86_calling_conventions#System_V_AMD64_ABI)). And this is how it looks now:
+As you can see there's a lot of memory access (to get structures fields). And also I decided to break an abstraction. To reduce the running time, I access memory directly (to get a List item). That is, I am not using iterators. And having figured out the structures, I rewrote this function in assembly (There's a lot of important things in C calling conventions and about it you can read [here](https://en.wikipedia.org/wiki/X86_calling_conventions#System_V_AMD64_ABI)). And this is how it looks now:
 ```Assembly
 HashTable_get:
     push rbx
@@ -214,13 +214,13 @@ And total time with *mstrcm* is **29.694s**.
 
 In the disassembler I noticed that CRC32 was implemented in hardware when I looked at the disassembled function:
 ```Assembly
-    ...
+...
     mov    rax,QWORD PTR [rbp-0x10]
     mov    rdx,QWORD PTR [rbp-0x8]
     crc32  rax,rdx
     nop
     mov    QWORD PTR [rbp-0x18],rax
-    ...
+...
 ```
 So why don't we use it directly? I've written assembly hashing function:
 ```Assembly
@@ -249,23 +249,23 @@ The total running time of the program is **23.993s**.
 I realized that you can very quickly compare strings and calculate the hash if you make the key length the same for all words.
 And I did it like before: I changed hash table keys with zero extand to 32 bits. For string compare I just compared bytes with 256-bit **YMM registers**:
 ```Assembly
-    ...
+...
     vlddqu ymm0, [rsi]
     vlddqu ymm1, [rdi]
     vpcmpeqq ymm0, ymm0, ymm1
     vpmovmskb eax, ymm0
     cmp eax, -1
-    ...
+...
 ```
 And for hashing i just do four crc32 hashing:
 ```Assembly
-    ...
+...
     xor rax, rax
     crc32 rax, QWORD [r9]
     crc32 rax, QWORD [r9 + 8]
     crc32 rax, QWORD [r9 + 16]
     crc32 rax, QWORD [r9 + 24]
-    ...
+...
 ```
 Also I can use these functions in get function by inlining because they are very small. And there will be less time spent on calling the function.
 And here benchmark of the final version:
