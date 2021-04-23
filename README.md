@@ -157,11 +157,8 @@ And as you can see on the previous test *hashing function* is taking too long. S
 
 Not surprisingly, both functions are good enough to hash strings:  
 
-Default hashing                                                                 | CRC32
-:------------------------------------------------------------------------------:|:-------------------------:
-![](https://github.com/AntonIVT/Optimization/blob/main/images/default_col.jpg)  |  ![](https://github.com/AntonIVT/Optimization/blob/main/images/crc32_col.jpg)  
-
-<p align="center"> <i> Figure 5 </i> </p>  
+![Hashing compare](https://github.com/AntonIVT/Optimization/blob/main/images/hashing_cmp.jpg) 
+<p align="left"> <i> Figure 5 </i> </p>  
 
 And for speed I decided to used _mm_crc32_u64.  
 But not all strings are divisible by 8. So let's change the data format for the input dictionary. Every string **must** be divisible by 8. Just add the required number of zeros in the end. Example: *"Hello\0\0\0"*. So next I've written a hash function with intrinsic. And profiler result you can see here:
