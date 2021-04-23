@@ -44,7 +44,7 @@ It is necessary to choose the optimal value for memory and speed. So I decided t
 Load factor selection it is an algorithmic optimization. You don't need to think about how the hash table works.  
 
 First benchmark with total time **54.160s**:
-![Vtune1](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune1.jpg)
+![Vtune1](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune1.png)
 
 ### Get function optimization
 
@@ -123,7 +123,7 @@ HashTable_get:
 ```
 
 And here you can see here profiler results for this version of the hash table with upgraded function *get*: 
-![Vtune2](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune2.jpg)
+![Vtune2](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune2.png)
 And total time is **50.042s**
 
 ### Hashing function optimization
@@ -144,12 +144,13 @@ unsigned long long HashingFunction(const char* key)
 }
 ```
 And as you can see on the previous test *hashing function* is taking too long. So I decided to use **CRC32** for hashing strings. Fortunately there is intrinsic in SSE4.2 (Streaming SIMD Extensions, you could read about it [here](https://stackoverflow.blog/2020/07/08/improving-performance-with-simd-intrinsics-in-three-use-cases/)) **_mm_crc32_u64** that accumulates a CRC32 value for unsigned 64-bit integers.There also exists intrinsic _mm_crc32_u8 that accumulates a CRC32 with only 8-bit integers, but with that hashing function total time is greater than was befor: 52.128s. Not surprisingly, both functions are good enough to hash strings:
-Default hashing             | CRC32
-:-------------------------:|:-------------------------:
-![](https://github.com/AntonIVT/Optimization/blob/main/images/default_col.jpg)  |  ![](https://github.com/AntonIVT/Optimization/blob/main/images/crc32_col.jpg)
+Default hashing                                                                 | CRC32
+:------------------------------------------------------------------------------:|:-------------------------:
+![](https://github.com/AntonIVT/Optimization/blob/main/images/default_col.jpg)  |  ![](https://github.com/AntonIVT/Optimization/blob/main/images/crc32_col.jpg)  
+
 And for speed I decided to used _mm_crc32_u64.  
 But not all strings are divisible by 8. So let's change the data format for the input dictionary. Every string **must** be divisible by 8. Just add the required number of zeros in the end. Example: *"Hello\0\0\0"*. So next I've written a hash function with intrinsic. And profiler result you can see here:
-![Vtune4](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune4.jpg)  
+![Vtune4](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune4.png)  
 The total time is **30.248s**.
 
 ### String compare optimization
@@ -188,7 +189,7 @@ return_cmp:
     ret
 ```
 And as you can see I compare string by 8 bytes, because on previous step I've changed fictionary format. So that's why it's a little fast than standart *strcmp*:
-![Vtune5](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune5.jpg)
+![Vtune5](https://github.com/AntonIVT/Optimization/blob/main/images/Vtune5.png)
 
 ### CRC32 optimization
 
